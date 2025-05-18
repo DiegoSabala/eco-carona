@@ -1,0 +1,6 @@
+@Eco_Carona_HostAddress = http://localhost:5270
+
+GET {{Eco_Carona_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

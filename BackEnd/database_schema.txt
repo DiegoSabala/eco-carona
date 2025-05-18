@@ -1,0 +1,118 @@
+-- Criando schema
+CREATE SCHEMA IF NOT EXISTS carona;
+
+-- Tabela de Usuários
+CREATE TABLE carona.usuarios (
+    id SERIAL PRIMARY KEY,
+    nome VARCHAR(100) NOT NULL,
+    email VARCHAR(100) UNIQUE NOT NULL,
+    senha VARCHAR(255) NOT NULL,
+    tipo VARCHAR(20) CHECK (tipo IN ('MOTORISTA', 'PASSAGEIRO', 'AMBOS')) NOT NULL,
+    documento VARCHAR(20) UNIQUE NOT NULL,
+    endereco TEXT,
+    criado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Tabela de Veículos
+CREATE TABLE carona.veiculos (
+    id SERIAL PRIMARY KEY,
+    usuario_id INTEGER REFERENCES carona.usuarios(id),
+    modelo VARCHAR(100) NOT NULL,
+    placa VARCHAR(10) UNIQUE NOT NULL,
+    vagas INTEGER NOT NULL CHECK (vagas > 0),
+    consumo_medio FLOAT NOT NULL CHECK (consumo_medio > 0),
+    criado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Tabela de Rotas
+CREATE TABLE carona.rotas (
+    id SERIAL PRIMARY KEY,
+    motorista_id INTEGER REFERENCES carona.usuarios(id),
+    origem VARCHAR(100) NOT NULL,
+    destino VARCHAR(100) NOT NULL,
+    horario TIME NOT NULL,
+    dias_da_semana VARCHAR(50) NOT NULL, -- Ex: 'SEG,TER,QUA'
+    criado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Tabela de Viagens
+CREATE TABLE carona.viagens (
+    id SERIAL PRIMARY KEY,
+    motorista_id INTEGER REFERENCES carona.usuarios(id),
+    origem VARCHAR(100) NOT NULL,
+    destino VARCHAR(100) NOT NULL,
+    data DATE NOT NULL,
+    horario TIME NOT NULL,
+    vagas_disponiveis INTEGER NOT NULL CHECK (vagas_disponiveis >= 0),
+    custo_estimado FLOAT NOT NULL CHECK (custo_estimado >= 0),
+    criado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Tabela de Reservas
+CREATE TABLE carona.reservas (
+    id SERIAL PRIMARY KEY,
+    passageiro_id INTEGER REFERENCES carona.usuarios(id),
+    viagem_id INTEGER REFERENCES carona.viagens(id) NULL,
+    rota_id INTEGER REFERENCES carona.rotas(id) NULL,
+    status VARCHAR(20) CHECK (status IN ('PENDENTE', 'ACEITA', 'RECUSADA')) NOT NULL,
+    horario TIMESTAMP NOT NULL,
+    criado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT check_viagem_ou_rota CHECK (viagem_id IS NOT NULL OR rota_id IS NOT NULL)
+);
+
+-- Tabela de Pagamentos
+CREATE TABLE carona.pagamentos (
+    id SERIAL PRIMARY KEY,
+    usuario_id INTEGER REFERENCES carona.usuarios(id),
+    valor FLOAT NOT NULL CHECK (valor >= 0),
+    forma_pagamento VARCHAR(50) NOT NULL,
+    data TIMESTAMP NOT NULL,
+    viagem_id INTEGER REFERENCES carona.viagens(id),
+    criado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Tabela de Avaliações
+CREATE TABLE carona.avaliacoes (
+    id SERIAL PRIMARY KEY,
+    avaliador_id INTEGER REFERENCES carona.usuarios(id),
+    avaliado_id INTEGER REFERENCES carona.usuarios(id),
+    nota INTEGER NOT NULL CHECK (nota >= 1 AND nota <= 5),
+    comentario TEXT,
+    tipo VARCHAR(20) CHECK (tipo IN ('MOTORISTA', 'PASSAGEIRO')) NOT NULL,
+    viagem_id INTEGER REFERENCES carona.viagens(id),
+    criado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Inserindo massa de dados
+-- Usuários
+INSERT INTO carona.usuarios (nome, email, senha, tipo, documento, endereco) VALUES
+('Roberto Silva', 'roberto@email.com', 'hash_senha_123', 'MOTORISTA', '12345678901', 'Rua A, 123, São Paulo'),
+('Letícia Santos', 'leticia@email.com', 'hash_senha_456', 'PASSAGEIRO', '98765432109', 'Av B, 456, São Paulo'),
+('Carlos Oliveira', 'carlos@email.com', 'hash_senha_789', 'AMBOS', '45678912345', 'Rua C, 789, Campinas');
+
+-- Veículos
+INSERT INTO carona.veiculos (usuario_id, modelo, placa, vagas, consumo_medio) VALUES
+(1, 'Toyota Corolla', 'ABC1234', 4, 12.5),
+(3, 'Honda Civic', 'XYZ5678', 3, 11.8);
+
+-- Rotas
+INSERT INTO carona.rotas (motorista_id, origem, destino, horario, dias_da_semana) VALUES
+(1, 'São Paulo, SP', 'Campinas, SP', '07:00:00', 'SEG,TER,QUA,QUI,SEX');
+
+-- Viagens
+INSERT INTO carona.viagens (motorista_id, origem, destino, data, horario, vagas_disponiveis, custo_estimado) VALUES
+(3, 'Campinas, SP', 'São Paulo, SP', '2025-05-20', '14:00:00', 2, 50.00);
+
+-- Reservas
+INSERT INTO carona.reservas (passageiro_id, viagem_id, rota_id, status, horario) VALUES
+(2, NULL, 1, 'PENDENTE', '2025-05-19 07:00:00'),
+(2, 1, NULL, 'ACEITA', '2025-05-20 14:00:00');
+
+-- Pagamentos
+INSERT INTO carona.pagamentos (usuario_id, valor, forma_pagamento, data, viagem_id) VALUES
+(2, 50.00, 'PIX', '2025-05-20 14:30:00', 1);
+
+-- Avaliações
+INSERT INTO carona.avaliacoes (avaliador_id, avaliado_id, nota, comentario, tipo, viagem_id) VALUES
+(2, 3, 5, 'Ótimo motorista, muito pontual!', 'MOTORISTA', 1),
+(3, 2, 4, 'Passageira educada.', 'PASSAGEIRO', 1);
